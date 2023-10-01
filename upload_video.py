@@ -106,7 +106,7 @@ def initialize_upload(youtube, file, title, description="", tags=None, category=
         # practice, but if you're using Python older than 2.6 or if you're
         # running on App Engine, you should set the chunksize to something like
         # 1024 * 1024 (1 megabyte).
-        media_body=MediaFileUpload(options.file, chunksize=-1, resumable=True),
+        media_body=MediaFileUpload(file, chunksize=-1, resumable=True),
     )
 
     resumable_upload(insert_request)
@@ -127,12 +127,12 @@ def resumable_upload(insert_request):
                     print("Video id '%s' was successfully uploaded." % response["id"])
                 else:
                     exit("The upload failed with an unexpected response: %s" % response)
-        except (HttpError, e):
+        except HttpError as e:
             if e.resp.status in RETRIABLE_STATUS_CODES:
                 error = "A retriable HTTP error %d occurred:\n%s" % (e.resp.status, e.content)
             else:
                 raise
-        except (RETRIABLE_EXCEPTIONS, e):
+        except RETRIABLE_EXCEPTIONS as e:
             error = "A retriable error occurred: %s" % e
 
         if error is not None:
@@ -154,7 +154,7 @@ def upload(video: Path, title):
     try:
         print(video)
         initialize_upload(youtube, video, title)
-    except (HttpError, e):
+    except HttpError as e:
         print("An HTTP error %d occurred:\n%s" % (e.resp.status, e.content))
 
 
