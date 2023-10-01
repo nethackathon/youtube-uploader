@@ -1,18 +1,17 @@
-#!/usr/bin/python
+#! /usr/bin/env python
 
+import click
 import http.client
 import httplib2
 import os
+from pathlib import Path
 import random
 import sys
 import time
 
-from apiclient.discovery import build
-from apiclient.errors import HttpError
-from apiclient.http import MediaFileUpload
-from oauth2client.client import flow_from_clientsecrets
-from oauth2client.file import Storage
-from oauth2client.tools import argparser, run_flow
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from googleapiclient.http import MediaFileUpload
 
 
 # Explicitly tell the underlying HTTP transport library not to retry, since
@@ -35,7 +34,7 @@ RETRIABLE_EXCEPTIONS = (
     http.client.BadStatusLine,
 )
 
-# Always retry when an apiclient.errors.HttpError with one of these status
+# Always retry when an googleapiclient.errors.HttpError with one of these status
 # codes is raised.
 RETRIABLE_STATUS_CODES = [500, 502, 503, 504]
 
@@ -159,29 +158,24 @@ def resumable_upload(insert_request):
             time.sleep(sleep_seconds)
 
 
-if __name__ == "__main__":
-    argparser.add_argument("--file", required=True, help="Video file to upload")
-    argparser.add_argument("--title", help="Video title", default="Test Title")
-    argparser.add_argument("--description", help="Video description", default="Test Description")
-    argparser.add_argument(
-        "--category",
-        default="22",
-        help="Numeric video category. " + "See https://developers.google.com/youtube/v3/docs/videoCategories/list",
-    )
-    argparser.add_argument("--keywords", help="Video keywords, comma separated", default="")
-    argparser.add_argument(
-        "--privacyStatus",
-        choices=VALID_PRIVACY_STATUSES,
-        default=VALID_PRIVACY_STATUSES[0],
-        help="Video privacy status.",
-    )
-    args = argparser.parse_args()
+def upload(video: Path):
+    #youtube = get_authenticated_service()
 
-    if not os.path.exists(args.file):
-        exit("Please specify a valid file using the --file= parameter.")
-
-    youtube = get_authenticated_service(args)
     try:
-        initialize_upload(youtube, args)
+        print(video)
+        #initialize_upload(youtube)
     except (HttpError, e):
         print("An HTTP error %d occurred:\n%s" % (e.resp.status, e.content))
+
+
+@click.command()
+@click.argument("directory", type=click.Path(dir_okay=True, file_okay=False, exists=True))
+def main(directory):
+    directory = Path(directory)
+    videos = sorted(p for p in directory.glob("**/*.mp4") if "chat" not in p.name)
+    for v in videos:
+        upload(v)
+
+
+if __name__ == "__main__":
+    main()
