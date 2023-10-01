@@ -12,6 +12,7 @@ import time
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
+from google_auth_oauthlib.flow import InstalledAppFlow
 
 
 # Explicitly tell the underlying HTTP transport library not to retry, since
@@ -79,7 +80,9 @@ VALID_PRIVACY_STATUSES = ("public", "private", "unlisted")
 
 
 def get_authenticated_service():
-    return build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, developerKey=os.environ["GOOGLE_API_KEY"])
+    flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRETS_FILE, scopes=YOUTUBE_UPLOAD_SCOPE)
+    credentials = flow.run_local_server()
+    return build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, credentials=credentials)
 
 
 def initialize_upload(youtube, file, title, description="", tags=None, category="22", privacy_status="private"):
