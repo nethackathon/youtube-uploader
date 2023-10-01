@@ -78,28 +78,17 @@ https://developers.google.com/api-client-library/python/guide/aaa_client_secrets
 VALID_PRIVACY_STATUSES = ("public", "private", "unlisted")
 
 
-def get_authenticated_service(args):
-    flow = flow_from_clientsecrets(
-        CLIENT_SECRETS_FILE, scope=YOUTUBE_UPLOAD_SCOPE, message=MISSING_CLIENT_SECRETS_MESSAGE
-    )
-
-    storage = Storage("%s-oauth2.json" % sys.argv[0])
-    credentials = storage.get()
-
-    if credentials is None or credentials.invalid:
-        credentials = run_flow(flow, storage, args)
-
-    return build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, http=credentials.authorize(httplib2.Http()))
+def get_authenticated_service():
+    return build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, developerKey=os.environ["GOOGLE_API_KEY"])
 
 
-def initialize_upload(youtube, options):
-    tags = None
-    if options.keywords:
-        tags = options.keywords.split(",")
+def initialize_upload(youtube, file, title, description="", tags=None, category="22", privacy_status="private"):
+    if tags is None:
+        tags = []
 
     body = dict(
-        snippet=dict(title=options.title, description=options.description, tags=tags, categoryId=options.category),
-        status=dict(privacyStatus=options.privacyStatus),
+        snippet=dict(title=title, description=description, tags=tags, categoryId=category),
+        status=dict(privacyStatus=privacy_status),
     )
 
     # Call the API's videos.insert method to create and upload the video.
@@ -158,23 +147,25 @@ def resumable_upload(insert_request):
             time.sleep(sleep_seconds)
 
 
-def upload(video: Path):
-    #youtube = get_authenticated_service()
+def upload(video: Path, title):
+    youtube = get_authenticated_service()
+    title = f"{title}: {video.parent.name}"
 
     try:
         print(video)
-        #initialize_upload(youtube)
+        initialize_upload(youtube, video, title)
     except (HttpError, e):
         print("An HTTP error %d occurred:\n%s" % (e.resp.status, e.content))
 
 
 @click.command()
 @click.argument("directory", type=click.Path(dir_okay=True, file_okay=False, exists=True))
-def main(directory):
+@click.option("--title", help="A prefix for the video title on youtube", default="Nethackathon VI:")
+def main(directory, title):
     directory = Path(directory)
     videos = sorted(p for p in directory.glob("**/*.mp4") if "chat" not in p.name)
     for v in videos:
-        upload(v)
+        upload(v, title)
 
 
 if __name__ == "__main__":
