@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import httplib
+import http.client
 import httplib2
 import os
 import random
@@ -26,13 +26,13 @@ MAX_RETRIES = 10
 RETRIABLE_EXCEPTIONS = (
     httplib2.HttpLib2Error,
     IOError,
-    httplib.NotConnected,
-    httplib.IncompleteRead,
-    httplib.ImproperConnectionState,
-    httplib.CannotSendRequest,
-    httplib.CannotSendHeader,
-    httplib.ResponseNotReady,
-    httplib.BadStatusLine,
+    http.client.NotConnected,
+    http.client.IncompleteRead,
+    http.client.ImproperConnectionState,
+    http.client.CannotSendRequest,
+    http.client.CannotSendHeader,
+    http.client.ResponseNotReady,
+    http.client.BadStatusLine,
 )
 
 # Always retry when an apiclient.errors.HttpError with one of these status
