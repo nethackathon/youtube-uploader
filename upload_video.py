@@ -77,7 +77,7 @@ For more information about the client_secrets.json file format, please visit:
 https://developers.google.com/api-client-library/python/guide/aaa_client_secrets
 """
 
-#VALID_PRIVACY_STATUSES = ("public", "private", "unlisted")
+# VALID_PRIVACY_STATUSES = ("public", "private", "unlisted")
 
 
 def get_authenticated_service():
@@ -93,7 +93,7 @@ def get_authenticated_service():
             flow.client_config["token_uri"],
             refresh_token=refresh_token,
             client_id=flow.client_config["client_id"],
-            client_secret=flow.client_config["client_secret"]
+            client_secret=flow.client_config["client_secret"],
         )
         credentials = google_auth_oauthlib.helpers.credentials_from_session(flow.oauth2session, flow.client_config)
     except Exception as e:
