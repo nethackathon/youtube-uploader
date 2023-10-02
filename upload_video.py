@@ -3,6 +3,7 @@
 import click
 import http.client
 import httplib2
+import logging
 import os
 from pathlib import Path
 import random
@@ -13,6 +14,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
 from google_auth_oauthlib.flow import InstalledAppFlow
+import google_auth_oauthlib.helpers
 
 
 # Explicitly tell the underlying HTTP transport library not to retry, since
@@ -49,39 +51,60 @@ RETRIABLE_STATUS_CODES = [500, 502, 503, 504]
 #   https://developers.google.com/youtube/v3/guides/authentication
 # For more information about the client_secrets.json file format, see:
 #   https://developers.google.com/api-client-library/python/guide/aaa_client_secrets
-CLIENT_SECRETS_FILE = "client_secrets.json"
+CLIENT_SECRETS_FILE = Path(__file__).parent.joinpath("client_secrets.json")
+REFRESH_TOKEN_FILE = Path(__file__).parent.joinpath("refresh_token")
 
 # This OAuth 2.0 access scope allows an application to upload files to the
 # authenticated user's YouTube channel, but doesn't allow other types of access.
-YOUTUBE_UPLOAD_SCOPE = "https://www.googleapis.com/auth/youtube.upload"
+YOUTUBE_UPLOAD_SCOPE = ["https://www.googleapis.com/auth/youtube.upload"]
 YOUTUBE_API_SERVICE_NAME = "youtube"
 YOUTUBE_API_VERSION = "v3"
 
 # This variable defines a message to display if the CLIENT_SECRETS_FILE is
 # missing.
-MISSING_CLIENT_SECRETS_MESSAGE = """
+MISSING_CLIENT_SECRETS_MESSAGE = f"""
 WARNING: Please configure OAuth 2.0
 
 To make this sample run you will need to populate the client_secrets.json file
 found at:
 
-   %s
+   {CLIENT_SECRETS_FILE}
 
 with information from the API Console
 https://console.cloud.google.com/
 
 For more information about the client_secrets.json file format, please visit:
 https://developers.google.com/api-client-library/python/guide/aaa_client_secrets
-""" % os.path.abspath(
-    os.path.join(os.path.dirname(__file__), CLIENT_SECRETS_FILE)
-)
+"""
 
-VALID_PRIVACY_STATUSES = ("public", "private", "unlisted")
+#VALID_PRIVACY_STATUSES = ("public", "private", "unlisted")
 
 
 def get_authenticated_service():
     flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRETS_FILE, scopes=YOUTUBE_UPLOAD_SCOPE)
-    credentials = flow.run_local_server()
+
+    # Attempt to read refresh token from file, if that fails, do the whole auth flow again,
+    # then write the refresh token to a file.
+    try:
+        with REFRESH_TOKEN_FILE.open() as f:
+            refresh_token = f.read()
+
+        flow.oauth2session.refresh_token(
+            flow.client_config["token_uri"],
+            refresh_token=refresh_token,
+            client_id=flow.client_config["client_id"],
+            client_secret=flow.client_config["client_secret"]
+        )
+        credentials = google_auth_oauthlib.helpers.credentials_from_session(flow.oauth2session, flow.client_config)
+    except Exception as e:
+        logging.exception(e)
+        logging.info(f"Refresh token at {REFRESH_TOKEN_FILE} didn't work, redoing auth")
+        credentials = flow.run_local_server()
+
+    logging.info(f"Saving refresh token to {REFRESH_TOKEN_FILE}")
+    with open(REFRESH_TOKEN_FILE, "w") as f:
+        f.write(credentials.refresh_token)
+
     return build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, credentials=credentials)
 
 
@@ -156,7 +179,7 @@ def upload(video: Path, title):
 
     try:
         print(video)
-        initialize_upload(youtube, video, title)
+        #initialize_upload(youtube, video, title)
     except HttpError as e:
         print("An HTTP error %d occurred:\n%s" % (e.resp.status, e.content))
 
@@ -165,6 +188,7 @@ def upload(video: Path, title):
 @click.argument("directory", type=click.Path(dir_okay=True, file_okay=False, exists=True))
 @click.option("--title", help="A prefix for the video title on youtube", default="Nethackathon VI:")
 def main(directory, title):
+    logging.basicConfig(level=logging.INFO)
     directory = Path(directory)
     videos = sorted(p for p in directory.glob("**/*.mp4") if "chat" not in p.name)
     for v in videos:
