@@ -108,13 +108,13 @@ def get_authenticated_service():
     return build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, credentials=credentials)
 
 
-def initialize_upload(youtube, file, title, description="", tags=None, category="22", privacy_status="private"):
+def initialize_upload(youtube, file, title, description="", tags=None, category="20", privacy_status="private"):
     if tags is None:
         tags = []
 
     body = dict(
         snippet=dict(title=title, description=description, tags=tags, categoryId=category),
-        status=dict(privacyStatus=privacy_status),
+        status=dict(privacyStatus=privacy_status, selfDeclaredMadeForKids=False),
     )
 
     # Call the API's videos.insert method to create and upload the video.
