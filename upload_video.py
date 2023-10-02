@@ -175,7 +175,7 @@ def resumable_upload(insert_request):
 
 def upload(video: Path, title):
     youtube = get_authenticated_service()
-    title = f"{title}: {video.parent.name}"
+    title = f"{title} {video.parent.name}"
 
     try:
         initialize_upload(youtube, video, title)
