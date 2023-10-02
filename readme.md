@@ -19,3 +19,5 @@ Running:
 1. `./upload_video.py /some/path/to/downloaded/videos --title="Nethackathon XVIXX:"
 
 The first time you will be prompted for google credentials, they will then be saved to a file called `refresh_token`, this will be valid for some time (months I think) without having to redo the auth.
+
+You may hit youtube quota limits pretty easily... might need to request an increase or start the free $300 trial thingy.
