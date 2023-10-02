@@ -13,9 +13,9 @@ Once only preparation steps:
 Running:
 
 . edit `download.sh` with the location to jjvantheman's scraped videos for the current nethackathon
-. cd where you want the videos and run `./download.sh`
+. run `./download.sh /some/path/to/downloaded/videos` (will resume from where it left off if interrupted and re-ran)
 . make a python virtualenv and activate it
 . `pip install -r requirements.txt`
 . `./upload_video.py /some/path/to/downloaded/videos --title="Nethackathon XVIXX:"
 
-The first time you will be prompted for google credentials, they will then be saved to a file called `refresh_token`, this will be valid for some time without having to redo the auth.
+The first time you will be prompted for google credentials, they will then be saved to a file called `refresh_token`, this will be valid for some time (months I think) without having to redo the auth.
