@@ -7,9 +7,12 @@ import logging
 import os
 from pathlib import Path
 import random
-import sys
+import re
+import requests
 import time
 
+from bs4 import BeautifulSoup
+from dotenv import load_dotenv
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
@@ -78,6 +81,12 @@ https://developers.google.com/api-client-library/python/guide/aaa_client_secrets
 """
 
 # VALID_PRIVACY_STATUSES = ("public", "private", "unlisted")
+
+
+def get_api_key_service():
+    load_dotenv()
+    DEVELOPER_KEY = os.environ.get("GOOGLE_API_KEY")
+    return build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, developerKey=DEVELOPER_KEY)
 
 
 def get_authenticated_service():
@@ -175,7 +184,7 @@ def resumable_upload(insert_request):
 
 def upload(video: Path, title):
     youtube = get_authenticated_service()
-    title = f"{title} {video.parent.name}"
+    #title = f"{title} {video.parent.name}"
 
     try:
         initialize_upload(youtube, video, title)
@@ -184,14 +193,37 @@ def upload(video: Path, title):
 
 
 @click.command()
-@click.argument("directory", type=click.Path(dir_okay=True, file_okay=False, exists=True))
+@click.argument("url")
 @click.option("--title", help="A prefix for the video title on youtube", default="Nethackathon VI:")
-def main(directory, title):
+def main(url, title):
     logging.basicConfig(level=logging.INFO)
-    directory = Path(directory)
-    videos = sorted(p for p in directory.glob("**/*.mp4") if "chat" not in p.name)
-    for v in videos:
-        upload(v, title)
+    response = requests.get(url)
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.text, "html.parser")
+        for link in soup.find_all("a"):
+            href = link.get("href")
+            # Only uploading six at a time, to conform to our current quota of 10,000 per day (1600 * 6)
+            if re.match(r'^(13|14|15|16|17|18)-\w+/$', href):
+                response = requests.get(f"{url}{href}")
+                soup = BeautifulSoup(response.text, "html.parser")
+                for file_link in soup.find_all("a"):
+                    file_href = file_link.get("href")
+                    if re.match(r'^\d+\.mp4$', file_href):
+                        logging.info(f"Downloading {url}{href}{file_href}")
+                        response = requests.get(f"{url}{href}{file_href}", stream=True)
+                        if response.status_code == 200:
+                            with open(f"downloaded/{file_href}", "wb") as f:
+                                for chunk in response.iter_content(chunk_size=8192):
+                                    f.write(chunk)
+                            logging.info(f"Uploading {file_href}")
+                            upload(Path(f"downloaded/{file_href}"), f"{href[:-1]} NetHackathon Fall 2023")
+                            os.remove(f"downloaded/{file_href}")
+
+
+    #directory = Path(directory)
+    #videos = sorted(p for p in directory.glob("**/*.mp4") if "chat" not in p.name)
+    #for v in videos:
+    #    upload(v, title)
 
 
 if __name__ == "__main__":
